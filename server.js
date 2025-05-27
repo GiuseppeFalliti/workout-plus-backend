@@ -98,7 +98,8 @@ const sampleExercises = [
     { name: 'Curl Panca', type: 'Bicipiti' },
     { name: 'Curl Bilancere', type: 'Bicipiti' },
     { name: 'Panca Inclinata 30', type: 'Chest' },
-    { name: 'Alzate Lat Panca 45',type: 'Deltoidi' }
+    { name: 'Alzate Lat Panca 45',type: 'Deltoidi' },
+    { name: 'Trazioni',type: 'Back' }
 ];
 
 // Funzione per inserire gli esercizi
