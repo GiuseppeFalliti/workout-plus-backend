@@ -12,6 +12,8 @@ app.use(cors({
     allowedHeaders: ['Content-Type']
 }));
 
+const port = process.env.PORT || 3000;
+
 app.use(express.json());
 
 //creazione database
@@ -359,7 +361,6 @@ app.delete('/api/programmi/:id', (req, res) => {
 });
 
 // Start the server
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
