@@ -120,7 +120,8 @@ const sampleExercises = [
     { name: 'Trazioni',type: 'Back' },
     { name: 'Flessioni', type: 'Chest, Triceps'},
     { name: 'Dip', type: 'Chest, Triceps'},
-    {name:'Handstand Push Up', type: 'shoulders'}
+    {name:'Handstand Push Up', type: 'shoulders'},
+    {name:'Muscle-up', type: 'back, triceps'}
 ];
 
 // Funzione per inserire gli esercizi
