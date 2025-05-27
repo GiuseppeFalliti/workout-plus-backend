@@ -376,6 +376,28 @@ app.put('/api/workouts/:workoutId', (req, res) => {
     });
 });
 
+// Elimina un workout/giorno di allenamento
+app.delete('/api/workouts/:workoutId', (req, res) => {
+    const { workoutId } = req.params;
+    
+    // Prima eliminiamo tutti gli esercizi associati al workout
+    db.run('DELETE FROM workout_exercises WHERE workout_id = ?', [workoutId], (err) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        
+        // Poi eliminiamo il workout stesso
+        db.run('DELETE FROM workouts WHERE id = ?', [workoutId], (err) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json({ message: 'Giorno di allenamento eliminato con successo' });
+        });
+    });
+});
+
 app.delete('/api/workouts/:workoutId/exercises/:exerciseId', (req, res) => {
     const { workoutId, exerciseId } = req.params;
     
