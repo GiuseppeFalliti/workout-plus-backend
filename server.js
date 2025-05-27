@@ -17,17 +17,32 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 
 //creazione database
-const db = new sqlite3.Database('database.sqlite',
-    (err) => {
+const db = new sqlite3.Database('database.sqlite', (err) => {
+    if (err) {
+        console.error(err.message);
+        return;
+    }
+    console.log('Connected to the SQLite database.');
+    
+    // Controlla se il database è vuoto
+    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='exercises'", [], (err, row) => {
         if (err) {
             console.error(err.message);
+            return;
         }
-        console.log('Connected to the SQLite database.');
-    }
-);
+        
+        // Se la tabella non esiste, crea le tabelle e inserisci gli esercizi
+        if (!row) {
+            console.log('Inizializzazione del database...');
+            initializeDatabase();
+        }
+    });
+});
 
-// Creazione tabelle
-db.serialize(() => {
+// Funzione per inizializzare il database
+const initializeDatabase = () => {
+    // Creazione tabelle
+    db.serialize(() => {
     // Tabella programmi
     db.run(`
         CREATE TABLE IF NOT EXISTS programs (
@@ -79,8 +94,11 @@ db.serialize(() => {
         )
     `);
 
-    console.log('Database schema creato con successo');
-});
+        console.log('Database schema creato con successo');
+        // Inserisci gli esercizi solo dopo la creazione delle tabelle
+        insertExercises();
+    });
+};
 
 // Inserimento esercizi
 const sampleExercises = [
@@ -131,8 +149,7 @@ const insertExercises = () => {
     });
 };
 
-// Inserisci gli esercizi dopo la creazione del database
-insertExercises();
+// La funzione insertExercises verrà chiamata solo quando necessario
 
 //Endpoint per ottenere tutti i programmi
 app.get('/api/programmi', (req, res) => {
