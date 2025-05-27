@@ -1,13 +1,9 @@
 services:
   - type: web
-    name: workout-plus-backend
+    name: workout-plus-api
     env: node
     buildCommand: npm install
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: workout-plus-db
-          property: connectionString

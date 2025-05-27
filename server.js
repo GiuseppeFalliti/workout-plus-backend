@@ -1,6 +1,6 @@
-import express from 'express';
-import cors from 'cors';
-import sqlite3 from 'sqlite3';
+const express = require('express');
+const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
 
 
 const app = express();
@@ -17,9 +17,8 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 
 // Configurazione del percorso del database
-const dbPath = process.env.NODE_ENV === 'production' 
-    ? '/data/database.sqlite'
-    : './data/database.sqlite';
+// In Render, usare percorso relativo per la persistenza dei dati
+const dbPath = './data/database.sqlite';
 
 //creazione database
 const db = new sqlite3.Database(dbPath, (err) => {
