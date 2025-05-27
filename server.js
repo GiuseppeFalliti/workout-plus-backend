@@ -106,23 +106,27 @@ const sampleExercises = [
 
 // Funzione per inserire gli esercizi
 const insertExercises = () => {
-    // Prima elimina tutti gli esercizi esistenti
-    db.run('DELETE FROM exercises', [], (err) => {
-        if (err) {
-            console.error('Errore nella pulizia degli esercizi:', err);
-            return;
-        }
-        
-        // Poi inserisci i nuovi esercizi
-        sampleExercises.forEach(exercise => {
-            db.run('INSERT INTO exercises (name, type) VALUES (?, ?)',
-                [exercise.name, exercise.type], (err) => {
-                    if (err) {
-                        console.error('Errore nell\'inserimento dell\'esercizio:', err);
-                    }
-                });
+    // Per ogni esercizio nel campione
+    sampleExercises.forEach(exercise => {
+        // Prima controlla se l'esercizio esiste già
+        db.get('SELECT id FROM exercises WHERE name = ?', [exercise.name], (err, row) => {
+            if (err) {
+                console.error('Errore nella verifica dell\'esercizio:', err);
+                return;
+            }
+            
+            // Se l'esercizio non esiste, inseriscilo
+            if (!row) {
+                db.run('INSERT INTO exercises (name, type) VALUES (?, ?)',
+                    [exercise.name, exercise.type], (err) => {
+                        if (err) {
+                            console.error('Errore nell\'inserimento dell\'esercizio:', err);
+                        } else {
+                            console.log(`Nuovo esercizio aggiunto: ${exercise.name}`);
+                        }
+                    });
+            }
         });
-        console.log('Esercizi inseriti con successo');
     });
 };
 
