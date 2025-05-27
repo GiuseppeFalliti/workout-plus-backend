@@ -16,8 +16,13 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// Configurazione del percorso del database
+const dbPath = process.env.NODE_ENV === 'production' 
+    ? '/data/database.sqlite'
+    : './data/database.sqlite';
+
 //creazione database
-const db = new sqlite3.Database('database.sqlite', (err) => {
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error(err.message);
         return;
