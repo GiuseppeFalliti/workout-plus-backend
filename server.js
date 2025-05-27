@@ -17,33 +17,20 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 
 // Configurazione del percorso del database
-// In Render, utilizzare /var/data/ che è una directory persistente
+// In Render, usare il percorso supportato per i volumi persistenti
 const dbPath = process.env.NODE_ENV === 'production' 
-    ? '/var/data/workoutplus-database.sqlite' 
+    ? '/opt/render/project/src/.data/workoutplus-database.sqlite' 
     : './data/database.sqlite';
 
 // Assicuriamo di avere accesso al percorso del database
 const fs = require('fs');
 const path = require('path');
 
-// Assicura che la directory esista
+// In ambiente di produzione, non tentiamo di creare la directory, Render lo fa per noi
+// Usiamo un percorso diverso che sappiamo essere accessibile
 if (process.env.NODE_ENV === 'production') {
-    try {
-        // Verifica se /var/data esiste, altrimenti crea una directory locale
-        if (!fs.existsSync('/var/data')) {
-            console.log('/var/data non esiste, creo directory locale');
-            // Se non abbiamo accesso a /var/data, usiamo una directory locale
-            const dbDir = path.dirname(dbPath);
-            if (!fs.existsSync(dbDir)) {
-                fs.mkdirSync(dbDir, { recursive: true });
-                console.log(`Directory creata: ${dbDir}`);
-            }
-        } else {
-            console.log('/var/data esiste, utilizzo il disco persistente');
-        }
-    } catch (error) {
-        console.error('Errore durante la verifica/creazione della directory:', error);
-    }
+    // Render monta il disco in /opt/render/project/src/.data se configurato correttamente
+    console.log(`Ambiente di produzione, utilizzo percorso database: ${dbPath}`);
 }
 
 //creazione database
