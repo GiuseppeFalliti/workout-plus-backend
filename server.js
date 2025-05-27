@@ -101,7 +101,8 @@ const sampleExercises = [
     { name: 'Alzate Lat Panca 45',type: 'Deltoidi' },
     { name: 'Trazioni',type: 'Back' },
     { name: 'Flessioni', type: 'Chest, Triceps'},
-    { name: 'Dip', type: 'Chest, Triceps'}
+    { name: 'Dip', type: 'Chest, Triceps'},
+    {name:'Handstand Push Up', type: 'shoulders'}
 ];
 
 // Funzione per inserire gli esercizi
