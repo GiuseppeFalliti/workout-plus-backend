@@ -17,49 +17,15 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 
 // Configurazione del percorso del database
-// In Render, utilizzare /var/data/ che è una directory persistente
-const dbPath = process.env.NODE_ENV === 'production' 
-    ? '/var/data/workoutplus-database.sqlite' 
-    : './data/database.sqlite';
-
-// Assicuriamo di avere accesso al percorso del database
-const fs = require('fs');
-const path = require('path');
-
-// Assicura che la directory esista
-if (process.env.NODE_ENV === 'production') {
-    try {
-        // Verifica se /var/data esiste, altrimenti crea una directory locale
-        if (!fs.existsSync('/var/data')) {
-            console.log('/var/data non esiste, creo directory locale');
-            // Se non abbiamo accesso a /var/data, usiamo una directory locale
-            const dbDir = path.dirname(dbPath);
-            if (!fs.existsSync(dbDir)) {
-                fs.mkdirSync(dbDir, { recursive: true });
-                console.log(`Directory creata: ${dbDir}`);
-            }
-        } else {
-            console.log('/var/data esiste, utilizzo il disco persistente');
-        }
-    } catch (error) {
-        console.error('Errore durante la verifica/creazione della directory:', error);
-    }
-}
+const dbPath = './data/database.sqlite';
 
 //creazione database
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('Errore di connessione al database:', err.message);
+        console.error(err.message);
         return;
     }
-    console.log(`Connected to the SQLite database at ${dbPath}`);
-    
-    // Aggiungiamo log per debug
-    if (process.env.NODE_ENV === 'production') {
-        console.log('Ambiente di produzione rilevato');
-    } else {
-        console.log('Ambiente di sviluppo rilevato');
-    }
+    console.log('Connected to the SQLite database.');
     
     // Controlla se il database è vuoto
     db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='exercises'", [], (err, row) => {
