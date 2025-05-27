@@ -1,3 +1,4 @@
 node_modules
 .env
-/data/*.sqlite
+# Non ignorare il database per mantenere i dati
+# /data/*.sqlite

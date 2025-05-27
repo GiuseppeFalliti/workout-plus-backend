@@ -39,6 +39,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
         if (!row) {
             console.log('Inizializzazione del database...');
             initializeDatabase();
+        } else {
+            // Se la tabella esiste, assicurati che ci siano tutti gli esercizi più recenti
+            console.log('Il database esiste già, aggiorno solo gli esercizi...');
+            insertExercises();
         }
     });
 });
