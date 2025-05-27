@@ -126,11 +126,35 @@ const sampleExercises = [
     { name: 'Panca Inclinata 30', type: 'Chest' },
     { name: 'Alzate Lat Panca 45',type: 'Deltoidi' },
     { name: 'Trazioni',type: 'Back' },
-    { name: 'Flessioni', type: 'Chest, Triceps'},
-    { name: 'Dip', type: 'Chest, Triceps'},
     {name:'Handstand Push Up', type: 'shoulders'},
     {name:'Muscle-up', type: 'back, triceps'},
-    {name:'Pull-up', type: 'back, biceps'}
+    {name:'Pull-up', type: 'back, biceps'},
+    {name:'Burpees', type: 'Full Body'},
+    {name:'Mountain climber', type: 'Legs, Core'},
+    {name:'Plank', type: 'Core'},
+    {name:'Squat', type: 'Legs'},
+    {name:'Lunges', type: 'Legs'},
+    {name:'Leg Raises', type: 'Core'},
+    {name:'Push Ups', type: 'Chest, Triceps'},
+    {name:'Pull Ups', type: 'Back, Biceps'},
+    {name:'Dips', type: 'Triceps'},
+    {name:'Chin Ups', type: 'Back, Biceps'},
+    {name:'Single Leg Deadlifts', type: 'Legs'},
+    {name:'Wall Sit', type: 'Legs'},
+    {name:'Glute Bridge', type: 'Glutes'},
+    {name:'Russian twists', type: 'Core'},
+    {name:'Bicycle crunches', type: 'Core'},
+    {name:'Flutter kick', type: 'Core'},
+    {name:'Jumping Jacks', type: 'Full Body'},
+    {name:'Box Jumps', type: 'Legs'},
+    {name:'Tuck Jumps', type: 'Legs'},
+    {name:'Jump Rope', type: 'Legs, Cardio'},
+    {name:'Kettlebell Swings', type: 'Full Body'},
+    {name:'Kettlebell Goblet Squats', type: 'Legs'},
+    {name:'Kettlebell Deadlifts', type: 'Full Body'},
+    {name:'Kettlebell Clean and Press', type: 'Full Body'},
+    {name:'Kettlebell Snatch', type: 'Full Body'}
+
 ];
 
 // Funzione per inserire gli esercizi
