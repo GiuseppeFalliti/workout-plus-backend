@@ -164,7 +164,8 @@ const sampleExercises = [
     { name: 'technical punch', type: 'Cardio' },
     { name: 'schivata Laterale', type: 'Difesa' },
     { name: 'technical kick', type: 'Difesa' },
-    { name: 'Parate', type: 'Difesa' }
+    { name: 'Parate', type: 'Difesa' },
+    { name: 'shadowboxing', type: 'Difesa' }
 ];
 
 // Funzione per inserire gli esercizi
