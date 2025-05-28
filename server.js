@@ -155,7 +155,16 @@ const sampleExercises = [
     { name: 'L-sit to handstand try', type: 'Core, Shoulders' },
     { name: 'Handstand press', type: 'Shoulders' },
     { name: 'L-sit pull up', type: 'Core, Back' },
-    { name: 'one bar dip', type: 'Triceps' }
+    { name: 'one bar dip', type: 'Triceps' },
+    { name: 'footwork avanti/indietro', type: 'Legs' },
+    { name: 'footwork laterale', type: 'Legs' },
+    { name: 'footwork pivot', type: 'Legs' },
+    { name: 'Bob and weave', type: 'Legs' },
+    { name: 'Box jumps', type: 'Legs' },
+    { name: 'technical punch', type: 'Cardio' },
+    { name: 'schivata Laterale', type: 'Difesa' },
+    { name: 'technical kick', type: 'Difesa' },
+    { name: 'Parate', type: 'Difesa' }
 ];
 
 // Funzione per inserire gli esercizi
