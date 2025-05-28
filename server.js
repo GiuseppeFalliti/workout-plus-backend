@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
-
+const { Pool } = require('pg');
 
 const app = express();
 
@@ -12,103 +11,88 @@ app.use(cors({
     allowedHeaders: ['Content-Type']
 }));
 
-
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Configurazione del percorso del database
-const dbPath = './data/database.sqlite';
+// Configurazione PostgreSQL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-//creazione database
-const db = new sqlite3.Database(dbPath, (err) => {
+// Test connessione database
+pool.connect((err, client, release) => {
     if (err) {
-        console.error(err.message);
+        console.error('Errore connessione database:', err);
         return;
     }
-    console.log('Connected to the SQLite database.');
-    
-    // Controlla se il database è vuoto
-    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='exercises'", [], (err, row) => {
-        if (err) {
-            console.error(err.message);
-            return;
-        }
-        
-        // Se la tabella non esiste, crea le tabelle e inserisci gli esercizi
-        if (!row) {
-            console.log('Inizializzazione del database...');
-            initializeDatabase();
-        } else {
-            // Se la tabella esiste, assicurati che ci siano tutti gli esercizi più recenti
-            console.log('Il database esiste già, aggiorno solo gli esercizi...');
-            insertExercises();
-        }
-    });
+    console.log('Connesso al database PostgreSQL');
+    release();
+
+    // Inizializza il database
+    initializeDatabase();
 });
 
 // Funzione per inizializzare il database
-const initializeDatabase = () => {
-    // Creazione tabelle
-    db.serialize(() => {
-    // Tabella programmi
-    db.run(`
-        CREATE TABLE IF NOT EXISTS programs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        level TEXT NOT NULL,
-        type TEXT NOT NULL,
-        category TEXT,
-        description TEXT NOT NULL
-        )
-    `);
+const initializeDatabase = async () => {
+    try {
+        // Creazione tabelle
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS programs (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                level TEXT NOT NULL,
+                type TEXT NOT NULL,
+                category TEXT,
+                description TEXT NOT NULL
+            )
+        `);
 
-    // Tabella workouts (giorni di allenamento)
-    db.run(`
-        CREATE TABLE IF NOT EXISTS workouts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        program_id INTEGER,
-        name TEXT NOT NULL,
-        day_number INTEGER NOT NULL,
-        week_number INTEGER NOT NULL,
-        FOREIGN KEY(program_id) REFERENCES programs(id)
-        )
-    `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS workouts (
+                id SERIAL PRIMARY KEY,
+                program_id INTEGER REFERENCES programs(id),
+                name TEXT NOT NULL,
+                day_number INTEGER NOT NULL,
+                week_number INTEGER NOT NULL
+            )
+        `);
 
-    // Tabella exercises (esercizi disponibili)
-    db.run(`
-        CREATE TABLE IF NOT EXISTS exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL,
-        video_url TEXT
-        )
-    `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS exercises (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                video_url TEXT
+            )
+        `);
 
-    // Tabella workout_exercises (esercizi assegnati a un workout)
-    db.run(`
-        CREATE TABLE IF NOT EXISTS workout_exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        workout_id INTEGER,
-        exercise_id INTEGER,
-        sets INTEGER,
-        reps TEXT,
-        weight TEXT,
-        rest_time INTEGER,
-        notes TEXT,
-        order_index INTEGER,
-        FOREIGN KEY(workout_id) REFERENCES workouts(id),
-        FOREIGN KEY(exercise_id) REFERENCES exercises(id)
-        )
-    `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS workout_exercises (
+                id SERIAL PRIMARY KEY,
+                workout_id INTEGER REFERENCES workouts(id),
+                exercise_id INTEGER REFERENCES exercises(id),
+                sets INTEGER,
+                reps TEXT,
+                weight TEXT,
+                rest_time INTEGER,
+                notes TEXT,
+                order_index INTEGER
+            )
+        `);
 
-        console.log('Database schema creato con successo');
-        // Inserisci gli esercizi solo dopo la creazione delle tabelle
-        insertExercises();
-    });
+        console.log('Schema database creato con successo');
+
+        // Inserisci gli esercizi base se non esistono
+        await insertExercises();
+
+    } catch (err) {
+        console.error('Errore inizializzazione database:', err);
+    }
 };
 
-// Inserimento esercizi
+// Esercizi base
 const sampleExercises = [
     { name: 'Spinte Manubri Panca Inclinata', type: 'Chest' },
     { name: 'Croci Cavi', type: 'Chest' },
@@ -124,321 +108,303 @@ const sampleExercises = [
     { name: 'Curl Panca', type: 'Bicipiti' },
     { name: 'Curl Bilancere', type: 'Bicipiti' },
     { name: 'Panca Inclinata 30', type: 'Chest' },
-    { name: 'Alzate Lat Panca 45',type: 'Deltoidi' },
-    { name: 'Trazioni',type: 'Back' },
-    {name:'Handstand Push Up', type: 'shoulders'},
-    {name:'Muscle-up', type: 'back, triceps'},
-    {name:'Pull-up', type: 'back, biceps'},
-    {name:'Burpees', type: 'Full Body'},
-    {name:'Mountain climber', type: 'Legs, Core'},
-    {name:'Plank', type: 'Core'},
-    {name:'Squat', type: 'Legs'},
-    {name:'Lunges', type: 'Legs'},
-    {name:'Leg Raises', type: 'Core'},
-    {name:'Push Ups', type: 'Chest, Triceps'},
-    {name:'Pull Ups', type: 'Back, Biceps'},
-    {name:'Dips', type: 'Triceps'},
-    {name:'Chin Ups', type: 'Back, Biceps'},
-    {name:'Single Leg Deadlifts', type: 'Legs'},
-    {name:'Wall Sit', type: 'Legs'},
-    {name:'Glute Bridge', type: 'Glutes'},
-    {name:'Russian twists', type: 'Core'},
-    {name:'Bicycle crunches', type: 'Core'},
-    {name:'Flutter kick', type: 'Core'},
-    {name:'Jumping Jacks', type: 'Full Body'},
-    {name:'Box Jumps', type: 'Legs'},
-    {name:'Tuck Jumps', type: 'Legs'},
-    {name:'Jump Rope', type: 'Legs, Cardio'},
-    {name:'Kettlebell Swings', type: 'Full Body'},
-    {name:'Kettlebell Goblet Squats', type: 'Legs'},
-    {name:'Kettlebell Deadlifts', type: 'Full Body'},
-    {name:'Kettlebell Clean and Press', type: 'Full Body'},
-    {name:'Kettlebell Snatch', type: 'Full Body'}
-
+    { name: 'Alzate Lat Panca 45', type: 'Deltoidi' },
+    { name: 'Trazioni', type: 'Back' },
+    { name: 'Handstand Push Up', type: 'shoulders' },
+    { name: 'Muscle-up', type: 'back, triceps' },
+    { name: 'Pull-up', type: 'back, biceps' },
+    { name: 'Burpees', type: 'Full Body' },
+    { name: 'Mountain climber', type: 'Legs, Core' },
+    { name: 'Plank', type: 'Core' },
+    { name: 'Squat', type: 'Legs' },
+    { name: 'Lunges', type: 'Legs' },
+    { name: 'Leg Raises', type: 'Core' },
+    { name: 'Push Ups', type: 'Chest, Triceps' },
+    { name: 'Pull Ups', type: 'Back, Biceps' },
+    { name: 'Dips', type: 'Triceps' },
+    { name: 'Chin Ups', type: 'Back, Biceps' },
+    { name: 'Single Leg Deadlifts', type: 'Legs' },
+    { name: 'Wall Sit', type: 'Legs' },
+    { name: 'Glute Bridge', type: 'Glutes' },
+    { name: 'Russian twists', type: 'Core' },
+    { name: 'Bicycle crunches', type: 'Core' },
+    { name: 'Flutter kick', type: 'Core' },
+    { name: 'Jumping Jacks', type: 'Full Body' },
+    { name: 'Box Jumps', type: 'Legs' },
+    { name: 'Tuck Jumps', type: 'Legs' },
+    { name: 'Jump Rope', type: 'Legs, Cardio' },
+    { name: 'Kettlebell Swings', type: 'Full Body' },
+    { name: 'Kettlebell Goblet Squats', type: 'Legs' },
+    { name: 'Kettlebell Deadlifts', type: 'Full Body' },
+    { name: 'Kettlebell Clean and Press', type: 'Full Body' },
+    { name: 'Kettlebell Snatch', type: 'Full Body' }
 ];
 
 // Funzione per inserire gli esercizi
-const insertExercises = () => {
-    // Per ogni esercizio nel campione
-    sampleExercises.forEach(exercise => {
-        // Prima controlla se l'esercizio esiste già
-        db.get('SELECT id FROM exercises WHERE name = ?', [exercise.name], (err, row) => {
-            if (err) {
-                console.error('Errore nella verifica dell\'esercizio:', err);
-                return;
+const insertExercises = async () => {
+    try {
+        for (const exercise of sampleExercises) {
+            // Controlla se l'esercizio esiste già
+            const existingExercise = await pool.query(
+                'SELECT id FROM exercises WHERE name = $1',
+                [exercise.name]
+            );
+
+            // Se non esiste, inseriscilo
+            if (existingExercise.rows.length === 0) {
+                await pool.query(
+                    'INSERT INTO exercises (name, type) VALUES ($1, $2)',
+                    [exercise.name, exercise.type]
+                );
+                console.log(`Nuovo esercizio aggiunto: ${exercise.name}`);
             }
-            
-            // Se l'esercizio non esiste, inseriscilo
-            if (!row) {
-                db.run('INSERT INTO exercises (name, type) VALUES (?, ?)',
-                    [exercise.name, exercise.type], (err) => {
-                        if (err) {
-                            console.error('Errore nell\'inserimento dell\'esercizio:', err);
-                        } else {
-                            console.log(`Nuovo esercizio aggiunto: ${exercise.name}`);
-                        }
-                    });
-            }
-        });
-    });
+        }
+    } catch (err) {
+        console.error('Errore inserimento esercizi:', err);
+    }
 };
 
-// La funzione insertExercises verrà chiamata solo quando necessario
-
-//Endpoint per ottenere tutti i programmi
-app.get('/api/programmi', (req, res) => {
-    db.all('SELECT * FROM programs', [], (err, rows) => {
-        if (err) {
-            console.error('Errore nel recupero dei programmi:', err);
-            res.status(500).json({ error: 'Errore nel recupero dei programmi' });
-            return;
-        }
-        res.json(rows);
-    });
+// Endpoint per ottenere tutti i programmi
+app.get('/api/programmi', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM programs');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Errore nel recupero dei programmi:', err);
+        res.status(500).json({ error: 'Errore nel recupero dei programmi' });
+    }
 });
 
 // Endpoint per aggiungere un programma
-app.post('/api/programmi', (req, res) => {
+app.post('/api/programmi', async (req, res) => {
     const { name, level, type, category, description } = req.body;
-    db.run(`
-        INSERT INTO programs (name, level, type, category, description)
-        VALUES (?, ?, ?, ?, ?)
-    `, [name, level, type, category, description], function(err) {
-        if (err) {
-            console.error('Errore di inserimento:', err);
-            res.status(500).json({ error: 'Errore di inserimento' });
-            return;
-        }
+    try {
+        const result = await pool.query(`
+            INSERT INTO programs (name, level, type, category, description)
+            VALUES ($1, $2, $3, $4, $5) RETURNING *
+        `, [name, level, type, category, description]);
+
         console.log('Programma inserito con successo');
-        res.status(201).json({ 
-            id: this.lastID,
-            name,
-            level,
-            type,
-            category,
-            description
-        });
-    });
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Errore di inserimento:', err);
+        res.status(500).json({ error: 'Errore di inserimento' });
+    }
 });
 
 // Endpoint per ottenere i dettagli di un programma specifico con i suoi workout
-app.get('/api/programmi/:id', (req, res) => {
+app.get('/api/programmi/:id', async (req, res) => {
     const programId = req.params.id;
-    db.get('SELECT * FROM programs WHERE id = ?', [programId], (err, program) => {
-        if (err) {
-            res.status(500).json({ error: 'Errore nel recupero del programma' });
-            return;
+    try {
+        // Recupera il programma
+        const programResult = await pool.query('SELECT * FROM programs WHERE id = $1', [programId]);
+
+        if (programResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Programma non trovato' });
         }
-        if (!program) {
-            res.status(404).json({ error: 'Programma non trovato' });
-            return;
-        }
-        
+
         // Recupera tutti i workout del programma
-        db.all('SELECT * FROM workouts WHERE program_id = ? ORDER BY week_number, day_number', [programId], (err, workouts) => {
-            if (err) {
-                res.status(500).json({ error: 'Errore nel recupero dei workout' });
-                return;
-            }
-            res.json({ ...program, workouts });
-        });
-    });
+        const workoutsResult = await pool.query(
+            'SELECT * FROM workouts WHERE program_id = $1 ORDER BY week_number, day_number',
+            [programId]
+        );
+
+        const program = programResult.rows[0];
+        program.workouts = workoutsResult.rows;
+
+        res.json(program);
+    } catch (err) {
+        console.error('Errore nel recupero del programma:', err);
+        res.status(500).json({ error: 'Errore nel recupero del programma' });
+    }
 });
 
 // Endpoint per aggiungere un workout a un programma
-app.post('/api/programmi/:id/workouts', (req, res) => {
+app.post('/api/programmi/:id/workouts', async (req, res) => {
     const programId = req.params.id;
     const { name, dayNumber, weekNumber } = req.body;
-    
-    db.run(`
-        INSERT INTO workouts (program_id, name, day_number, week_number)
-        VALUES (?, ?, ?, ?)
-    `, [programId, name, dayNumber, weekNumber], function(err) {
-        if (err) {
-            res.status(500).json({ error: 'Errore nell\'inserimento del workout' });
-            return;
-        }
-        res.status(201).json({
-            id: this.lastID,
-            program_id: programId,
-            name,
-            day_number: dayNumber,
-            week_number: weekNumber
-        });
-    });
+
+    try {
+        const result = await pool.query(`
+            INSERT INTO workouts (program_id, name, day_number, week_number)
+            VALUES ($1, $2, $3, $4) RETURNING *
+        `, [programId, name, dayNumber, weekNumber]);
+
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Errore nell\'inserimento del workout:', err);
+        res.status(500).json({ error: 'Errore nell\'inserimento del workout' });
+    }
 });
 
 // Endpoint per ottenere tutti gli esercizi disponibili
-app.get('/api/exercises', (req, res) => {
-    db.all('SELECT * FROM exercises ORDER BY name', [], (err, exercises) => {
-        if (err) {
-            res.status(500).json({ error: 'Errore nel recupero degli esercizi' });
-            return;
-        }
-        res.json(exercises);
-    });
+app.get('/api/exercises', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM exercises ORDER BY name');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Errore nel recupero degli esercizi:', err);
+        res.status(500).json({ error: 'Errore nel recupero degli esercizi' });
+    }
 });
 
 // Endpoint per aggiungere un esercizio a un workout
-app.post('/api/workouts/:id/exercises', (req, res) => {
+app.post('/api/workouts/:id/exercises', async (req, res) => {
     const workoutId = req.params.id;
     const { exerciseId, sets, reps, weight, restTime, notes, orderIndex } = req.body;
-    
-    db.run(`
-        INSERT INTO workout_exercises 
-        (workout_id, exercise_id, sets, reps, weight, rest_time, notes, order_index)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [workoutId, exerciseId, sets, reps, weight, restTime, notes, orderIndex], function(err) {
-        if (err) {
-            res.status(500).json({ error: 'Errore nell\'inserimento dell\'esercizio' });
-            return;
-        }
-        res.status(201).json({
-            id: this.lastID,
-            workout_id: workoutId,
-            exercise_id: exerciseId,
-            sets,
-            reps,
-            weight,
-            rest_time: restTime,
-            notes,
-            order_index: orderIndex
-        });
-    });
+
+    try {
+        const result = await pool.query(`
+            INSERT INTO workout_exercises 
+            (workout_id, exercise_id, sets, reps, weight, rest_time, notes, order_index)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
+        `, [workoutId, exerciseId, sets, reps, weight, restTime, notes, orderIndex]);
+
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('Errore nell\'inserimento dell\'esercizio:', err);
+        res.status(500).json({ error: 'Errore nell\'inserimento dell\'esercizio' });
+    }
 });
 
 // Endpoint per ottenere tutti gli esercizi di un workout
-app.get('/api/workouts/:id/exercises', (req, res) => {
+app.get('/api/workouts/:id/exercises', async (req, res) => {
     const workoutId = req.params.id;
-    db.all(`
-        SELECT we.*, e.name as exercise_name, e.type as exercise_type 
-        FROM workout_exercises we
-        JOIN exercises e ON we.exercise_id = e.id
-        WHERE we.workout_id = ?
-        ORDER BY we.order_index
-    `, [workoutId], (err, exercises) => {
-        if (err) {
-            res.status(500).json({ error: 'Errore nel recupero degli esercizi' });
-            return;
-        }
-        res.json(exercises);
-    });
+    try {
+        const result = await pool.query(`
+            SELECT we.*, e.name as exercise_name, e.type as exercise_type 
+            FROM workout_exercises we
+            JOIN exercises e ON we.exercise_id = e.id
+            WHERE we.workout_id = $1
+            ORDER BY we.order_index
+        `, [workoutId]);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Errore nel recupero degli esercizi:', err);
+        res.status(500).json({ error: 'Errore nel recupero degli esercizi' });
+    }
 });
 
 // Endpoint per eliminare un esercizio da un workout
-app.delete('/api/workout-exercises/:id', (req, res) => {
-    console.log('Ricevuta richiesta DELETE per esercizio:', req.params.id);
+app.delete('/api/workout-exercises/:id', async (req, res) => {
     const exerciseId = req.params.id;
-    
-    db.run('DELETE FROM workout_exercises WHERE id = ?', [exerciseId], function(err) {
-        if (err) {
-            console.error('Errore nella cancellazione:', err);
-            res.status(500).json({ error: 'Errore nella cancellazione dell\'esercizio' });
-            return;
+
+    try {
+        const result = await pool.query('DELETE FROM workout_exercises WHERE id = $1', [exerciseId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Esercizio non trovato' });
         }
-        console.log('Risultato cancellazione:', this.changes);
-        if (this.changes === 0) {
-            res.status(404).json({ error: 'Esercizio non trovato' });
-            return;
-        }
+
         res.status(200).json({ message: 'Esercizio eliminato con successo' });
-    });
+    } catch (err) {
+        console.error('Errore nella cancellazione:', err);
+        res.status(500).json({ error: 'Errore nella cancellazione dell\'esercizio' });
+    }
 });
 
 // Modifica un esercizio in un workout
-app.put('/api/workouts/:workoutId/exercises/:exerciseId', (req, res) => {
+app.put('/api/workouts/:workoutId/exercises/:exerciseId', async (req, res) => {
     const { workoutId, exerciseId } = req.params;
     const { sets, reps, weight, restTime, notes } = req.body;
 
-    db.run(`
-        UPDATE workout_exercises 
-        SET sets = ?, reps = ?, weight = ?, rest_time = ?, notes = ?
-        WHERE workout_id = ? AND id = ?
-    `, [sets, reps, weight, restTime, notes, workoutId, exerciseId], (err) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
+    try {
+        await pool.query(`
+            UPDATE workout_exercises 
+            SET sets = $1, reps = $2, weight = $3, rest_time = $4, notes = $5
+            WHERE workout_id = $6 AND id = $7
+        `, [sets, reps, weight, restTime, notes, workoutId, exerciseId]);
+
         res.json({ message: 'Esercizio aggiornato con successo' });
-    });
+    } catch (err) {
+        console.error('Errore aggiornamento esercizio:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Modifica il nome di un workout
-app.put('/api/workouts/:workoutId', (req, res) => {
+app.put('/api/workouts/:workoutId', async (req, res) => {
     const { workoutId } = req.params;
     const { name } = req.body;
 
-    db.run('UPDATE workouts SET name = ? WHERE id = ?', [name, workoutId], (err) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
+    try {
+        await pool.query('UPDATE workouts SET name = $1 WHERE id = $2', [name, workoutId]);
         res.json({ message: 'Workout aggiornato con successo' });
-    });
+    } catch (err) {
+        console.error('Errore aggiornamento workout:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Elimina un workout/giorno di allenamento
-app.delete('/api/workouts/:workoutId', (req, res) => {
+app.delete('/api/workouts/:workoutId', async (req, res) => {
     const { workoutId } = req.params;
-    
-    // Prima eliminiamo tutti gli esercizi associati al workout
-    db.run('DELETE FROM workout_exercises WHERE workout_id = ?', [workoutId], (err) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
+
+    try {
+        // Prima eliminiamo tutti gli esercizi associati al workout
+        await pool.query('DELETE FROM workout_exercises WHERE workout_id = $1', [workoutId]);
+
         // Poi eliminiamo il workout stesso
-        db.run('DELETE FROM workouts WHERE id = ?', [workoutId], (err) => {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            res.json({ message: 'Giorno di allenamento eliminato con successo' });
-        });
-    });
+        await pool.query('DELETE FROM workouts WHERE id = $1', [workoutId]);
+
+        res.json({ message: 'Giorno di allenamento eliminato con successo' });
+    } catch (err) {
+        console.error('Errore eliminazione workout:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.delete('/api/workouts/:workoutId/exercises/:exerciseId', (req, res) => {
+// Elimina un esercizio specifico da un workout
+app.delete('/api/workouts/:workoutId/exercises/:exerciseId', async (req, res) => {
     const { workoutId, exerciseId } = req.params;
-    
-    db.run('DELETE FROM workout_exercises WHERE workout_id = ? AND id = ?', [workoutId, exerciseId], (err) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
+
+    try {
+        const result = await pool.query(
+            'DELETE FROM workout_exercises WHERE workout_id = $1 AND id = $2',
+            [workoutId, exerciseId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Esercizio non trovato' });
         }
+
         res.status(200).json({ message: 'Esercizio eliminato con successo' });
-    });
+    } catch (err) {
+        console.error('Errore eliminazione esercizio:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// DELETE program endpoint
-app.delete('/api/programmi/:id', (req, res) => {
+// Elimina un programma
+app.delete('/api/programmi/:id', async (req, res) => {
     const programId = req.params.id;
-    
-    // First delete related workout_exercises
-    db.run('DELETE FROM workout_exercises WHERE workout_id IN (SELECT id FROM workouts WHERE program_id = ?)', [programId], (err) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        // Then delete related workouts
-        db.run('DELETE FROM workouts WHERE program_id = ?', [programId], (err) => {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            
-            // Finally delete the program
-            db.run('DELETE FROM programs WHERE id = ?', [programId], (err) => {
-                if (err) {
-                    res.status(500).json({ error: err.message });
-                    return;
-                }
-                res.json({ message: 'Program deleted successfully' });
-            });
-        });
-    });
+
+    try {
+        // Prima elimina gli esercizi dei workout
+        await pool.query(`
+            DELETE FROM workout_exercises 
+            WHERE workout_id IN (SELECT id FROM workouts WHERE program_id = $1)
+        `, [programId]);
+
+        // Poi elimina i workout
+        await pool.query('DELETE FROM workouts WHERE program_id = $1', [programId]);
+
+        // Infine elimina il programma
+        await pool.query('DELETE FROM programs WHERE id = $1', [programId]);
+
+        res.json({ message: 'Program deleted successfully' });
+    } catch (err) {
+        console.error('Errore eliminazione programma:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Gestione errori per connessioni database
+process.on('SIGINT', async () => {
+    console.log('Chiusura server...');
+    await pool.end();
+    process.exit(0);
 });
 
 // Start the server
